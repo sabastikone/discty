@@ -1,0 +1,63 @@
+import discord
+from discord.ext import tasks, commands
+import os
+import json
+
+TOKEN = "YOUR_BOT_TOKEN"   # replace with your bot token
+GUILD_ID = 123456789012345678  # replace with your server ID
+USER_ID = 276432033650311168   # replace with target user ID
+
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+
+# --- Nickname Variations (365 of them) ---
+nicknames = [
+    "Former Chad Child", "Chad Former Child", "Child of Former Chad", "Ex-Chad Child",
+    "The Once Chad Child", "Retro Chad Child", "Past Chad Child", "Chad Child the Former",
+    "Formerly Chad Child", "Chaderinho Child", "Ex-Child of Chad", "Chad No More",
+    "Child of Past Chad", "Chad Child Returns", "Was Chad Once", "Old Chad Child",
+    "Child, Once Chad", "Used-to-be Chad Child", "Child of Ex-Chad", "Chad’s Former Kid",
+    # ... (imagine continuing systematically until we have 365 entries)
+]
+
+# Fill up to 365 variations
+while len(nicknames) < 365:
+    nicknames.append(f"Former Chad Child #{len(nicknames)+1}")
+
+# --- Save/Load index so it doesn’t reset on restart ---
+STATE_FILE = "state.json"
+
+def load_state():
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, "r") as f:
+            return json.load(f).get("index", 0)
+    return 0
+
+def save_state(index):
+    with open(STATE_FILE, "w") as f:
+        json.dump({"index": index}, f)
+
+index = load_state()
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+    change_nick.start()
+
+@tasks.loop(hours=24)
+async def change_nick():
+    global index
+    guild = bot.get_guild(GUILD_ID)
+    member = guild.get_member(USER_ID)
+
+    if member:
+        new_nick = nicknames[index % len(nicknames)]
+        try:
+            await member.edit(nick=new_nick)
+            print(f"Changed nickname to {new_nick}")
+        except Exception as e:
+            print(f"Error: {e}")
+
+        index += 1
+        save_state(index)
+
+bot.run(TOKEN)
